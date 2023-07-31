@@ -11,7 +11,8 @@ const RESPONSE_TYPES = {
   EXISTING_CARD: 'Card already exists',
   CARD_NOT_FOUND: 'Card not found',
   EXISTING_ADDRESS: 'Address already exists',
-  ADDRESS_NOT_FOUND: 'Address not found'
+  ADDRESS_NOT_FOUND: 'Address not found',
+  SOMETHING_WENT_WRONG: 'Something went wrong...'
 }
 
 export { RESPONSE_TYPES }

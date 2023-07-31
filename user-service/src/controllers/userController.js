@@ -3,7 +3,7 @@ import { logger, objectFormatter } from '../utils/logger.js'
 import Password from '../utils/password.js'
 import { isTokenValid, createToken } from '../utils/token.js'
 import { RESPONSE_TYPES } from '../utils/responseTypes.js'
-import { transformJSONToRedis, transformRedisToJSON } from '../utils/redis.js'
+// import { transformJSONToRedis, transformRedisToJSON } from '../utils/redis.js'
 import { ROLES } from '../utils/role.js'
 // import { redisClient } from '../index.js'
 import mongoose from 'mongoose'
@@ -76,6 +76,7 @@ const getUser = async (req, res) => {
     // }
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 
@@ -126,6 +127,7 @@ const getAllUsers = async (req, res) => {
     // }
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 
@@ -156,6 +158,7 @@ const createUser = async (req, res) => {
     res.json(newUser)
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 
@@ -189,6 +192,7 @@ const updateUser = async (req, res) => {
     res.json(findedUser)
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 
@@ -207,6 +211,7 @@ const deleteUser = async (req, res) => {
     res.json({ message: 'User deleted successfully' })
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 
@@ -250,6 +255,7 @@ const signinUser = async (req, res) => {
     res.status(201).send({ token })
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 

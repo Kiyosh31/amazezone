@@ -1,12 +1,19 @@
+import mongoose from 'mongoose'
 import Card from '../models/cardModel.js'
+import User from '../models/userModel.js'
 import { logger, objectFormatter } from '../utils/logger.js'
 import { RESPONSE_TYPES } from '../utils/responseTypes.js'
 import { isTokenValid } from '../utils/token.js'
+
+const getCard = (number) => Card.findOne({ number: number })
 
 const isCardMine = (authorization, existingCard) => {
   const token = isTokenValid(authorization)
   return existingCard.userId === token.data.id
 }
+
+const getUser = async (id) =>
+  User.findOne({ _id: new mongoose.Types.ObjectId(id) })
 
 const createCard = async (req, res) => {
   const prefix = 'createCard'
@@ -14,12 +21,31 @@ const createCard = async (req, res) => {
   try {
     logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_INCOMING })
 
-    const { number } = req.body
+    const { number, userId } = req.body
 
-    const existingCard = await Card.findOne({ number: number })
+    logger.http({
+      prefix,
+      message: `Searching for existing card with number: ${number}`
+    })
+    const existingCard = await getCard(number)
     if (existingCard) {
       logger.error({ prefix, message: RESPONSE_TYPES.EXISTING_CARD })
       return res.json({ errors: RESPONSE_TYPES.EXISTING_CARD })
+    }
+
+    logger.http({
+      prefix,
+      message: `Searching for existing user to attach the card with id: ${userId}`
+    })
+    const existingUser = await getUser(userId)
+    if (!existingUser) {
+      logger.error({
+        prefix,
+        message: "The user you're trying to attach this card does not exist"
+      })
+      return res.json({
+        errors: "The user you're trying to attach this card does not exist"
+      })
     }
 
     const newCard = new Card({ ...req.body })
@@ -35,6 +61,7 @@ const createCard = async (req, res) => {
     res.json(newCard)
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 
@@ -42,7 +69,7 @@ const updateCard = async (req, res) => {
   const prefix = 'updateCard'
 
   try {
-    const { id } = req.body
+    const { id, userId } = req.body
 
     logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_INCOMING })
     logger.http({
@@ -50,10 +77,25 @@ const updateCard = async (req, res) => {
       message: `Searching card with id: ${objectFormatter(id)}`
     })
 
-    const existingCard = await Card.findOne({ _id: id })
+    const existingCard = await getCard(id)
     if (!existingCard) {
       logger.error({ prefix, message: RESPONSE_TYPES.CARD_NOT_FOUND })
       return res.status(400).json({ errors: RESPONSE_TYPES.CARD_NOT_FOUND })
+    }
+
+    logger.http({
+      prefix,
+      message: `Searching user with id: ${objectFormatter(userId)}`
+    })
+    const existingUser = await getUser(userId)
+    if (!existingUser) {
+      logger.error({
+        prefix,
+        message: "The user you're trying to attach this card does not exist"
+      })
+      return res.json({
+        errors: "The user you're trying to attach this card does not exist"
+      })
     }
 
     // check if the card belongs to te user
@@ -81,6 +123,7 @@ const updateCard = async (req, res) => {
     res.json(existingCard)
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 
@@ -126,6 +169,7 @@ const deleteCard = async (req, res) => {
     res.json({ message: 'Card deleted successfully' })
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 

@@ -1,7 +1,12 @@
 import Address from '../models/addressModel.js'
+import User from '../models/userModel.js'
 import { logger, objectFormatter } from '../utils/logger.js'
 import { RESPONSE_TYPES } from '../utils/responseTypes.js'
 import { isTokenValid } from '../utils/token.js'
+
+const getAddress = (address) => Address.findOne({ address: address })
+
+const getUser = (id) => User.findOne({ _id: id })
 
 const isAddressMine = (authorization, existingAddress) => {
   const token = isTokenValid(authorization)
@@ -14,12 +19,28 @@ const createAddress = async (req, res) => {
   try {
     logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_INCOMING })
 
-    const { address } = req.body
+    const { address, userId } = req.body
 
-    const existingAddress = await Address.findOne({ address: address })
+    logger.http({
+      prefix,
+      message: `Searching for existing address: ${address}`
+    })
+    const existingAddress = await getAddress(address)
     if (existingAddress) {
       logger.error({ prefix, message: RESPONSE_TYPES.EXISTING_ADDRESS })
       return res.status(400).json({ errors: RESPONSE_TYPES.EXISTING_ADDRESS })
+    }
+
+    logger.http({
+      prefix,
+      message: `Searching for existing user with id: ${userId}`
+    })
+    const existingUser = await getUser(userId)
+    if (!existingUser) {
+      logger.error({ prefix, message: 'User to attach address not found' })
+      return res
+        .status(400)
+        .json({ errors: 'User to attach address not found' })
     }
 
     const newAddress = new Address({ ...req.body })
@@ -38,6 +59,7 @@ const createAddress = async (req, res) => {
     res.json(newAddress)
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 
@@ -45,7 +67,7 @@ const updateAddress = async (req, res) => {
   const prefix = 'updateAddress'
 
   try {
-    const { id } = req.body
+    const { id, userId } = req.body
 
     logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_INCOMING })
     logger.http({
@@ -57,6 +79,18 @@ const updateAddress = async (req, res) => {
     if (!existingAddress) {
       logger.error({ prefix, message: RESPONSE_TYPES.ADDRESS_NOT_FOUND })
       return res.status(400).json({ errors: RESPONSE_TYPES.ADDRESS_NOT_FOUND })
+    }
+
+    logger.http({
+      prefix,
+      message: `Searching user with id: ${userId}`
+    })
+    const existingUser = await getUser(userId)
+    if (!existingUser) {
+      logger.error({ prefix, message: 'User to attach address not found' })
+      return res
+        .status(400)
+        .json({ errors: 'User to attach address not found' })
     }
 
     // check if the address belongs to te user
@@ -84,6 +118,7 @@ const updateAddress = async (req, res) => {
     res.json(existingAddress)
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 
@@ -129,6 +164,7 @@ const deleteAddress = async (req, res) => {
     res.json({ message: 'Address deleted successfully' })
   } catch (err) {
     logger.error({ prefix, message: err.message })
+    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
   }
 }
 
