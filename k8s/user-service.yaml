@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: users
+  template:
+    metadata:
+      labels:
+        app: users
+    spec:
+      containers:
+        - name: users
+          image: user-service
+          imagePullPolicy: Never
+          resources:
+            limits:
+              memory: 512Mi
+              cpu: "1"
+          env:
+            - name: APP_ENV
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: APP_ENV
+            - name: PORT
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: USER_SERVICE_PORT
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: USER_SERVICE_MONGO_URI
+            - name: DB_LOGGER_COLLECTION
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: USER_SERVICE_DB_LOGGER_COLLECTION
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: USER_SERVICE_JWT_SECRET
+            - name: REDIS_URI
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: REDIS_USER_SERVICE_REDIS_URI
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: users-srv
+spec:
+  type: ClusterIP
+  selector:
+    app: users
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

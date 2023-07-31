@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-service
+  annotations:
+    kubernetes.io/spec.ingressClassName: nginx
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  rules:
+    # - host: example.dev
+      - http:
+          paths:
+            - path: /api/users/?(.*)
+              pathType: Prefix
+              backend:
+                service:
+                  name: users-srv
+                  port:
+                    number: 3000
+            - path: /api/address/?(.*)
+              pathType: Prefix
+              backend:
+                service:
+                  name: users-srv
+                  port:
+                    number: 3000
+            - path: /api/card/?(.*)
+              pathType: Prefix
+              backend:
+                service:
+                  name: users-srv
+                  port:
+                    number: 3000
