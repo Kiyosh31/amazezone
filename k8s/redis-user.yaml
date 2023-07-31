@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: redis-user
 spec:
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: redis-user
@@ -18,12 +18,12 @@ spec:
           resources:
             limits:
               memory: 512Mi
-              cpu: "1"
+              cpu: "0.1"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis-user-srv
+  name: redis-user
 spec:
   type: NodePort
   selector:

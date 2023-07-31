@@ -2,8 +2,8 @@ dev:
 	skaffold dev
 
 setup-linux:
-	chmod +x create-setup.sh
-	./create-setup.sh
+	chmod +x setup-linux.sh
+	./setup-linux.sh
 
 config-linux:
 	minikube start
