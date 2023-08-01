@@ -3,8 +3,13 @@ import { logger, objectFormatter } from '../utils/logger.js'
 import Password from '../utils/password.js'
 import { isTokenValid, createToken } from '../utils/token.js'
 import mongoose from 'mongoose'
-// import { transformJSONToRedis, transformRedisToJSON } from '../utils/redis.js'
-// import { redisClient } from '../index.js'
+import { transformJSONToRedis, transformRedisToJSON } from '../utils/redis.js'
+import { redisClient } from '../index.js'
+
+const isUserMine = (auth, user) => {
+  const token = isTokenValid(auth)
+  return user._id === token.data.id
+}
 
 const getUser = async (req, res) => {
   const prefix = 'getUser'
@@ -12,64 +17,87 @@ const getUser = async (req, res) => {
   try {
     logger.http({ prefix, message: 'Request incoming...' })
 
+    const { authorization } = req.headers
     const { id } = req.params
+
+    const validatedToken = isTokenValid(authorization)
+    if (validatedToken.err) {
+      logger.error({ prefix, message: validatedToken.data })
+      return res.status(400).send({ errors: validatedToken.data })
+    }
+    logger.http({
+      prefix,
+      message: `Valid token: ${objectFormatter(validatedToken.data)}`
+    })
 
     logger.http({ prefix, message: `Searching user with id: ${id}` })
 
-    logger.http({
-      prefix,
-      message: 'Searching for user'
-    })
+    const redisFindedUser = await redisClient.get(`user?id=${id}`)
 
-    // const redisFindedUser = await redisClient.get(`user?id=${id}`)
+    if (redisFindedUser) {
+      logger.http({
+        prefix,
+        message: `User found in redis: ${redisFindedUser}`
+      })
+      const user = transformRedisToJSON(redisFindedUser)
 
-    // if (redisFindedUser) {
-    //   logger.http({
-    //     prefix,
-    //     message: `${RESPONSE_TYPES.USER_FOUND_IN_REDIS} ${redisFindedUser}`
-    //   })
-    //   logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_FINISHED })
-
-    //   res.json(transformRedisToJSON(redisFindedUser))
-    // } else {
-    const mongoFindedUser = await User.aggregate([
-      {
-        $match: { _id: new mongoose.Types.ObjectId(id) }
-      },
-      {
-        $lookup: {
-          from: 'cards',
-          localField: '_id',
-          foreignField: 'userId',
-          as: 'cards'
-        }
-      },
-      {
-        $lookup: {
-          from: 'addresses',
-          localField: '_id',
-          foreignField: 'userId',
-          as: 'addresses'
-        }
+      if (!isUserMine(authorization, user[0])) {
+        logger.error({ prefix, message: 'User not belong to this jwt' })
+        return res.json({ errors: 'User not belong to this jwt' })
       }
-    ])
 
-    if (!mongoFindedUser || mongoFindedUser.length === 0) {
-      logger.error({ prefix, message: 'User not found' })
-      return res.status(400).json({ errors: 'User not found' })
+      logger.http({ prefix, message: 'Request finished...' })
+
+      res.json(user)
+    } else {
+      const mongoFindedUser = await User.aggregate([
+        {
+          $match: { _id: new mongoose.Types.ObjectId(id) }
+        },
+        {
+          $lookup: {
+            from: 'cards',
+            localField: '_id',
+            foreignField: 'userId',
+            as: 'cards'
+          }
+        },
+        {
+          $lookup: {
+            from: 'addresses',
+            localField: '_id',
+            foreignField: 'userId',
+            as: 'addresses'
+          }
+        }
+      ])
+
+      logger.http({
+        prefix,
+        message: `User found in database: ${objectFormatter(mongoFindedUser)}`
+      })
+
+      if (!mongoFindedUser || mongoFindedUser.length === 0) {
+        logger.error({ prefix, message: 'User not found' })
+        return res.status(400).json({ errors: 'User not found' })
+      }
+
+      if (!isUserMine(authorization, mongoFindedUser[0])) {
+        logger.error({ prefix, message: 'User not belong to this jwt' })
+        return res.json({ errors: 'User not belong to this jwt' })
+      }
+
+      await redisClient.set(
+        `user?id=${id}`,
+        transformJSONToRedis(mongoFindedUser)
+      )
+      logger.http({
+        prefix,
+        message: `User found in database: ${objectFormatter(mongoFindedUser)}`
+      })
+      logger.http({ prefix, message: 'Request finished...' })
+      res.json(mongoFindedUser)
     }
-
-    // await redisClient.set(
-    //   `user?id=${id}`,
-    //   transformJSONToRedis(mongoFindedUser)
-    // )
-    logger.http({
-      prefix,
-      message: `User found in database: ${objectFormatter(mongoFindedUser)}`
-    })
-    logger.http({ prefix, message: 'Request finished...' })
-    res.json(mongoFindedUser)
-    // }
   } catch (err) {
     logger.error({ prefix, message: err.message })
     return res.json({ errors: 'Something went wrong' })
@@ -92,35 +120,35 @@ const getAllUsers = async (req, res) => {
       message: `Valid token: ${objectFormatter(validatedToken.data)}`
     })
 
-    // const usersInRedis = await redisClient.get('allUsers')
-
     logger.http({ prefix, message: 'Searching for all users' })
-    // if (usersInRedis) {
-    //   logger.http({
-    //     prefix,
-    //     message: `${RESPONSE_TYPES.USER_FOUND_IN_REDIS} ${usersInRedis}`
-    //   })
-    //   logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_FINISHED })
+    const usersInRedis = await redisClient.get('allUsers')
 
-    //   res.json(transformRedisToJSON(usersInRedis))
-    // } else {
-    const usersInMongo = await User.find({})
+    if (usersInRedis) {
+      logger.http({
+        prefix,
+        message: `User found in redis: ${usersInRedis}`
+      })
+      logger.http({ prefix, message: 'Request finished...' })
 
-    if (!usersInMongo || usersInMongo.length === 0) {
-      logger.error({ prefix, message: 'No users found' })
-      return res.status(400).send({ errors: 'No users found' })
+      res.json(transformRedisToJSON(usersInRedis))
+    } else {
+      const usersInMongo = await User.find({})
+
+      if (!usersInMongo || usersInMongo.length === 0) {
+        logger.error({ prefix, message: 'No users found' })
+        return res.status(400).send({ errors: 'No users found' })
+      }
+
+      await redisClient.set(`allUsers`, transformJSONToRedis(usersInMongo))
+
+      logger.http({
+        prefix,
+        message: `User found in database: ${usersInMongo}`
+      })
+      logger.http({ prefix, message: 'Request finished...' })
+
+      res.json(usersInMongo)
     }
-
-    // await redisClient.set(`allUsers`, transformJSONToRedis(usersInMongo))
-
-    logger.http({
-      prefix,
-      message: `User found in database: ${usersInMongo}`
-    })
-    logger.http({ prefix, message: 'Request finished...' })
-
-    res.json(usersInMongo)
-    // }
   } catch (err) {
     logger.error({ prefix, message: err.message })
     return res.json({ errors: 'Something went wrong' })
@@ -141,7 +169,8 @@ const createUser = async (req, res) => {
       return res.status(400).send({ errors: 'User already exists' })
     }
 
-    const newUser = new User({ ...req.body, role: 'user' })
+    const role = req.originalUrl === '/api/user' ? 'user' : 'seller'
+    const newUser = new User({ ...req.body, role })
     logger.http({
       prefix,
       message: `Creating user with body: ${objectFormatter(req.body)}`
@@ -163,28 +192,73 @@ const updateUser = async (req, res) => {
   try {
     logger.http({ prefix, message: 'Request incoming...' })
 
+    const validatedToken = isTokenValid(authorization)
+    if (validatedToken.err) {
+      logger.error({ prefix, message: validatedToken.data })
+      return res.status(400).send({ errors: validatedToken.data })
+    }
+    logger.http({
+      prefix,
+      message: `Valid token: ${objectFormatter(validatedToken.data)}`
+    })
+
+    const { authorization } = req.headers
     const { id } = req.params
     logger.http({ prefix, message: `Searching for user with id: ${id}` })
 
-    const findedUser = await User.findOne({ _id: id })
-    if (!findedUser) {
-      logger.error({ prefix, message: 'User not found' })
-      return res.status(400).json({ errors: 'User not found' })
+    const redisFindedUser = await redisClient.get(`user?id=${id}`)
+    if (redisFindedUser) {
+      logger.http({
+        prefix,
+        message: `User found in redis: ${redisFindedUser}`
+      })
+
+      if (!isUserMine(authorization, redisFindedUser)) {
+        logger.error({ prefix, message: 'User not belong to this jwt' })
+        return res.json({ errors: 'User not belong to this jwt' })
+      }
+
+      const user = transformRedisToJSON(redisFindedUser)
+      user.set({ ...req.body })
+      await user.save()
+
+      await redisClient.set(`user?id=${id}`, transformJSONToRedis(user))
+
+      logger.http({ prefix, message: `user updated successfully` })
+      logger.http({ prefix, message: 'Request finished...' })
+
+      res.json(user)
+    } else {
+      const mongoFindedUser = await User.findOne({ _id: id })
+      if (!mongoFindedUser) {
+        logger.error({ prefix, message: 'User not found' })
+        return res.status(400).json({ errors: 'User not found' })
+      }
+
+      if (!isUserMine(authorization, mongoFindedUser)) {
+        logger.error({ prefix, message: 'User not belong to this jwt' })
+        return res.json({ errors: 'User not belong to this jwt' })
+      }
+
+      logger.http({
+        prefix,
+        message: `Updating user with id: ${id} and data: ${objectFormatter(
+          req.body
+        )}`
+      })
+      mongoFindedUser.set({ ...req.body })
+      await mongoFindedUser.save()
+
+      await redisClient.set(
+        `user?id=${id}`,
+        transformJSONToRedis(mongoFindedUser)
+      )
+
+      logger.http({ prefix, message: `user updated successfully` })
+      logger.http({ prefix, message: 'Request finished...' })
+
+      res.json(findedUser)
     }
-
-    logger.http({
-      prefix,
-      message: `Updating user with id: ${id} and data: ${objectFormatter(
-        req.body
-      )}`
-    })
-    findedUser.set({ ...req.body })
-    await findedUser.save()
-
-    logger.http({ prefix, message: `user updated successfully` })
-    logger.http({ prefix, message: 'Request finished...' })
-
-    res.json(findedUser)
   } catch (err) {
     logger.error({ prefix, message: err.message })
     return res.json({ errors: 'Something went wrong' })
@@ -196,14 +270,46 @@ const deleteUser = async (req, res) => {
 
   try {
     logger.http({ prefix, message: 'Request incoming...' })
-    logger.http({ prefix, message: `deleting user with id: ${req.params.id}` })
+    const role = req.originalUrl === '/api/user' ? 'user' : 'seller'
 
-    await User.findByIdAndDelete(req.params.id)
+    const validatedToken = isTokenValid(authorization)
+    if (validatedToken.err) {
+      logger.error({ prefix, message: validatedToken.data })
+      return res.status(400).send({ errors: validatedToken.data })
+    }
+    logger.http({
+      prefix,
+      message: `Valid token: ${objectFormatter(validatedToken.data)}`
+    })
 
-    logger.http({ prefix, message: 'user deleted successfully' })
-    logger.http({ prefix, message: 'Request finished...' })
+    logger.http({ prefix, message: `deleting ${role} with id: ${id}` })
 
-    res.json({ message: 'User deleted successfully' })
+    const { id } = req.params
+
+    const redisFindedUser = await redisClient.get(`user?id=${id}`)
+
+    if (redisFindedUser) {
+      logger.http({
+        prefix,
+        message: `${role} found in redis: ${redisFindedUser}`
+      })
+
+      await User.findByIdAndDelete(req.params.id)
+
+      redisClient.del(`user?id=${id}`)
+
+      logger.http({ prefix, message: `${role} deleted successfully` })
+      logger.http({ prefix, message: 'Request finished...' })
+
+      res.json({ message: `${role} deleted successfully` })
+    } else {
+      await User.findByIdAndDelete(req.params.id)
+
+      logger.http({ prefix, message: `${role} deleted successfully` })
+      logger.http({ prefix, message: 'Request finished...' })
+
+      res.json({ message: `${role} deleted successfully` })
+    }
   } catch (err) {
     logger.error({ prefix, message: err.message })
     return res.json({ errors: 'Something went wrong' })

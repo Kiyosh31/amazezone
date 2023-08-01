@@ -72,6 +72,17 @@ const updateCard = async (req, res) => {
     const { userId } = req.body
 
     logger.http({ prefix, message: 'Request incoming...' })
+
+    const validatedToken = isTokenValid(req.headers.authorization)
+    if (validatedToken.err) {
+      logger.error({ prefix, message: validatedToken.data })
+      return res.status(400).send({ errors: validatedToken.data })
+    }
+    logger.http({
+      prefix,
+      message: `Valid token: ${objectFormatter(validatedToken.data)}`
+    })
+
     logger.http({
       prefix,
       message: `Searching card with id: ${objectFormatter(id)}`
@@ -134,6 +145,17 @@ const deleteCard = async (req, res) => {
     const { id } = req.params
 
     logger.http({ prefix, message: 'Request incoming...' })
+
+    const validatedToken = isTokenValid(req.headers.authorization)
+    if (validatedToken.err) {
+      logger.error({ prefix, message: validatedToken.data })
+      return res.status(400).send({ errors: validatedToken.data })
+    }
+    logger.http({
+      prefix,
+      message: `Valid token: ${objectFormatter(validatedToken.data)}`
+    })
+
     logger.http({
       prefix,
       message: `Searching card with id: ${objectFormatter(id)}`
