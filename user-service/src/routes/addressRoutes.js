@@ -23,7 +23,7 @@ router.post(
 )
 
 router.put(
-  '',
+  '/:id',
   tokenValidatorMiddleware,
   updateAddressMiddleware,
   validateRequest,
@@ -31,7 +31,7 @@ router.put(
 )
 
 router.delete(
-  '',
+  '/:id',
   tokenValidatorMiddleware,
   deleteAddressMiddleware,
   validateRequest,

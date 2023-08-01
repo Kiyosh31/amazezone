@@ -18,9 +18,9 @@ import { tokenValidatorMiddleware } from '../middlewares/tokenValidatorMiddlewar
 
 const router = express.Router()
 
-router.get('', tokenValidatorMiddleware, validateRequest, getAllUsers)
-router.get('/:id', tokenValidatorMiddleware, validateRequest, getUser)
 router.post('', createUserMiddleware, validateRequest, createUser)
+router.get('/:id', tokenValidatorMiddleware, validateRequest, getUser)
+router.get('', tokenValidatorMiddleware, validateRequest, getAllUsers)
 router.put(
   '/:id',
   tokenValidatorMiddleware,

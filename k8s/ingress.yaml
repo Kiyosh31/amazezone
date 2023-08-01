@@ -10,7 +10,14 @@ spec:
     # - host: example.dev
       - http:
           paths:
-            - path: /api/users/?(.*)
+            - path: /api/user/?(.*)
+              pathType: Prefix
+              backend:
+                service:
+                  name: users-srv
+                  port:
+                    number: 3000
+            - path: /api/seller/?(.*)
               pathType: Prefix
               backend:
                 service:

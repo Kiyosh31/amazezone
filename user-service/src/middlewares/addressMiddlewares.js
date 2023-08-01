@@ -1,4 +1,4 @@
-import { body, header } from 'express-validator'
+import { body, header, param } from 'express-validator'
 
 const createAddressMiddleware = [
   body('userId').notEmpty().withMessage('You must provide a userId'),
@@ -9,7 +9,7 @@ const createAddressMiddleware = [
 ]
 
 const updateAddressMiddleware = [
-  body('id').notEmpty().withMessage('You must provide an id'),
+  param('id').notEmpty().withMessage('You must provide an id'),
   body('userId').notEmpty().withMessage('You must provide a userId'),
   body('name').notEmpty().withMessage('You must provide a name'),
   body('address').notEmpty().withMessage('You must provide an address'),
@@ -18,7 +18,7 @@ const updateAddressMiddleware = [
 ]
 
 const deleteAddressMiddleware = [
-  body('id').notEmpty().withMessage('You must provide an id')
+  param('id').notEmpty().withMessage('You must provide an id')
 ]
 
 export {

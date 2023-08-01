@@ -1,4 +1,4 @@
-import { body, header, param } from 'express-validator'
+import { body, param } from 'express-validator'
 
 const createCardMiddleware = [
   body('userId')
@@ -16,7 +16,7 @@ const createCardMiddleware = [
 ]
 
 const updateCardMiddleware = [
-  body('id').exists().notEmpty().withMessage('You must provide a card id'),
+  param('id').exists().notEmpty().withMessage('You must provide a card id'),
   body('userId')
     .notEmpty()
     .withMessage('You must provide a userId for the card'),
@@ -32,7 +32,7 @@ const updateCardMiddleware = [
 ]
 
 const deleteCardMiddleware = [
-  body('id').exists().notEmpty().withMessage('You must provide a card id')
+  param('id').exists().notEmpty().withMessage('You must provide a card id')
 ]
 
 export { createCardMiddleware, updateCardMiddleware, deleteCardMiddleware }

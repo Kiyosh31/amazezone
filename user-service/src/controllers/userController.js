@@ -2,17 +2,15 @@ import User from '../models/userModel.js'
 import { logger, objectFormatter } from '../utils/logger.js'
 import Password from '../utils/password.js'
 import { isTokenValid, createToken } from '../utils/token.js'
-import { RESPONSE_TYPES } from '../utils/responseTypes.js'
-// import { transformJSONToRedis, transformRedisToJSON } from '../utils/redis.js'
-import { ROLES } from '../utils/role.js'
-// import { redisClient } from '../index.js'
 import mongoose from 'mongoose'
+// import { transformJSONToRedis, transformRedisToJSON } from '../utils/redis.js'
+// import { redisClient } from '../index.js'
 
 const getUser = async (req, res) => {
   const prefix = 'getUser'
 
   try {
-    logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_INCOMING })
+    logger.http({ prefix, message: 'Request incoming...' })
 
     const { id } = req.params
 
@@ -57,8 +55,8 @@ const getUser = async (req, res) => {
     ])
 
     if (!mongoFindedUser || mongoFindedUser.length === 0) {
-      logger.error({ prefix, message: RESPONSE_TYPES.USER_NOT_FOUND })
-      return res.status(400).json({ errors: RESPONSE_TYPES.USER_NOT_FOUND })
+      logger.error({ prefix, message: 'User not found' })
+      return res.status(400).json({ errors: 'User not found' })
     }
 
     // await redisClient.set(
@@ -67,16 +65,14 @@ const getUser = async (req, res) => {
     // )
     logger.http({
       prefix,
-      message: `${RESPONSE_TYPES.USER_FOUND_IN_DB} ${objectFormatter(
-        mongoFindedUser
-      )}`
+      message: `User found in database: ${objectFormatter(mongoFindedUser)}`
     })
-    logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_FINISHED })
+    logger.http({ prefix, message: 'Request finished...' })
     res.json(mongoFindedUser)
     // }
   } catch (err) {
     logger.error({ prefix, message: err.message })
-    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
+    return res.json({ errors: 'Something went wrong' })
   }
 }
 
@@ -84,7 +80,7 @@ const getAllUsers = async (req, res) => {
   const prefix = 'getAllUsers'
 
   try {
-    logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_INCOMING })
+    logger.http({ prefix, message: 'Request incoming...' })
 
     const validatedToken = isTokenValid(req.headers.authorization)
     if (validatedToken.err) {
@@ -111,23 +107,23 @@ const getAllUsers = async (req, res) => {
     const usersInMongo = await User.find({})
 
     if (!usersInMongo || usersInMongo.length === 0) {
-      logger.error({ prefix, message: RESPONSE_TYPES.THERE_ARE_NO_USERS })
-      return res.status(400).send({ errors: RESPONSE_TYPES.THERE_ARE_NO_USERS })
+      logger.error({ prefix, message: 'No users found' })
+      return res.status(400).send({ errors: 'No users found' })
     }
 
     // await redisClient.set(`allUsers`, transformJSONToRedis(usersInMongo))
 
     logger.http({
       prefix,
-      message: `${RESPONSE_TYPES.USER_FOUND_IN_DB} ${usersInMongo}`
+      message: `User found in database: ${usersInMongo}`
     })
-    logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_FINISHED })
+    logger.http({ prefix, message: 'Request finished...' })
 
     res.json(usersInMongo)
     // }
   } catch (err) {
     logger.error({ prefix, message: err.message })
-    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
+    return res.json({ errors: 'Something went wrong' })
   }
 }
 
@@ -135,17 +131,17 @@ const createUser = async (req, res) => {
   const prefix = 'createUser'
 
   try {
-    logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_INCOMING })
+    logger.http({ prefix, message: 'Request incoming...' })
 
-    const existingUser = await User.findOne({ email: req.body.email })
-    if (existingUser) {
-      logger.error({ prefix, message: RESPONSE_TYPES.USER_ALREADY_EXISTS })
-      return res
-        .status(400)
-        .send({ errors: RESPONSE_TYPES.USER_ALREADY_EXISTS })
+    const { email } = req.body
+
+    const user = await User.findOne({ email: email })
+    if (user) {
+      logger.error({ prefix, message: 'User already exists' })
+      return res.status(400).send({ errors: 'User already exists' })
     }
 
-    const newUser = new User({ ...req.body, role: ROLES.USER })
+    const newUser = new User({ ...req.body, role: 'user' })
     logger.http({
       prefix,
       message: `Creating user with body: ${objectFormatter(req.body)}`
@@ -153,27 +149,27 @@ const createUser = async (req, res) => {
     await newUser.save()
 
     logger.http({ prefix, message: `user created successfully: ${newUser}` })
-    logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_FINISHED })
+    logger.http({ prefix, message: 'Request finished...' })
 
     res.json(newUser)
   } catch (err) {
     logger.error({ prefix, message: err.message })
-    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
+    return res.json({ errors: 'Something went wrong' })
   }
 }
 
 const updateUser = async (req, res) => {
   const prefix = 'updateUser'
   try {
-    logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_INCOMING })
+    logger.http({ prefix, message: 'Request incoming...' })
 
     const { id } = req.params
     logger.http({ prefix, message: `Searching for user with id: ${id}` })
 
     const findedUser = await User.findOne({ _id: id })
     if (!findedUser) {
-      logger.error({ prefix, message: RESPONSE_TYPES.USER_NOT_FOUND })
-      return res.status(400).json({ errors: RESPONSE_TYPES.USER_NOT_FOUND })
+      logger.error({ prefix, message: 'User not found' })
+      return res.status(400).json({ errors: 'User not found' })
     }
 
     logger.http({
@@ -182,17 +178,16 @@ const updateUser = async (req, res) => {
         req.body
       )}`
     })
-
     findedUser.set({ ...req.body })
     await findedUser.save()
 
     logger.http({ prefix, message: `user updated successfully` })
-    logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_FINISHED })
+    logger.http({ prefix, message: 'Request finished...' })
 
     res.json(findedUser)
   } catch (err) {
     logger.error({ prefix, message: err.message })
-    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
+    return res.json({ errors: 'Something went wrong' })
   }
 }
 
@@ -200,18 +195,18 @@ const deleteUser = async (req, res) => {
   const prefix = 'deleteUser'
 
   try {
-    logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_INCOMING })
+    logger.http({ prefix, message: 'Request incoming...' })
     logger.http({ prefix, message: `deleting user with id: ${req.params.id}` })
 
     await User.findByIdAndDelete(req.params.id)
 
     logger.http({ prefix, message: 'user deleted successfully' })
-    logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_FINISHED })
+    logger.http({ prefix, message: 'Request finished...' })
 
     res.json({ message: 'User deleted successfully' })
   } catch (err) {
     logger.error({ prefix, message: err.message })
-    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
+    return res.json({ errors: 'Something went wrong' })
   }
 }
 
@@ -219,16 +214,14 @@ const signinUser = async (req, res) => {
   const prefix = 'signinUser'
 
   try {
-    logger.http({ prefix, message: RESPONSE_TYPES.REQUEST_INCOMING })
+    logger.http({ prefix, message: 'Request incoming...' })
 
     const { email, password } = req.body
     const existingUser = await User.findOne({ email })
 
     if (!existingUser) {
-      logger.error({ prefix, message: RESPONSE_TYPES.INVALID_CREDENTIALS })
-      return res
-        .status(400)
-        .send({ errors: RESPONSE_TYPES.INVALID_CREDENTIALS })
+      logger.error({ prefix, message: 'Invalid credentials' })
+      return res.status(400).send({ errors: 'Invalid credentials' })
     }
 
     const passwordMatch = await Password.compare(
@@ -237,10 +230,8 @@ const signinUser = async (req, res) => {
     )
 
     if (!passwordMatch) {
-      logger.error({ prefix, message: RESPONSE_TYPES.INVALID_CREDENTIALS })
-      return res
-        .status(400)
-        .send({ errors: RESPONSE_TYPES.INVALID_CREDENTIALS })
+      logger.error({ prefix, message: 'Invalid credentials' })
+      return res.status(400).send({ errors: 'Invalid credentials' })
     }
     const token = createToken(
       existingUser.id,
@@ -248,14 +239,14 @@ const signinUser = async (req, res) => {
       existingUser.role
     )
     if (!token) {
-      logger.error({ prefix, message: RESPONSE_TYPES.TOKEN_NOT_CREATED })
-      return res.status(400).send({ errors: RESPONSE_TYPES.TOKEN_NOT_CREATED })
+      logger.error({ prefix, message: 'Token not created' })
+      return res.status(400).send({ errors: 'Token not created' })
     }
 
     res.status(201).send({ token })
   } catch (err) {
     logger.error({ prefix, message: err.message })
-    return res.json({ errors: RESPONSE_TYPES.SOMETHING_WENT_WRONG })
+    return res.json({ errors: 'Something went wrong' })
   }
 }
 

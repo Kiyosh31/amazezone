@@ -22,14 +22,14 @@ router.post(
   createCard
 )
 router.put(
-  '',
+  '/:id',
   tokenValidatorMiddleware,
   updateCardMiddleware,
   validateRequest,
   updateCard
 )
 router.delete(
-  '',
+  '/:id',
   deleteCardMiddleware,
   tokenValidatorMiddleware,
   validateRequest,

@@ -3,7 +3,17 @@ import Password from '../utils/password.js'
 
 const UserSchema = new mongoose.Schema(
   {
-    username: {
+    name: {
+      type: String,
+      required: true,
+      minlegnth: 5
+    },
+    lastName: {
+      type: String,
+      required: true,
+      minlegnth: 5
+    },
+    birth: {
       type: String,
       required: true,
       minlegnth: 5
