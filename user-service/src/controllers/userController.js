@@ -169,8 +169,7 @@ const createUser = async (req, res) => {
       return res.status(400).send({ errors: 'User already exists' })
     }
 
-    const role = req.originalUrl === '/api/user' ? 'user' : 'seller'
-    const newUser = new User({ ...req.body, role })
+    const newUser = new User({ ...req.body })
     logger.http({
       prefix,
       message: `Creating user with body: ${objectFormatter(req.body)}`
@@ -270,7 +269,6 @@ const deleteUser = async (req, res) => {
 
   try {
     logger.http({ prefix, message: 'Request incoming...' })
-    const role = req.originalUrl === '/api/user' ? 'user' : 'seller'
 
     const validatedToken = isTokenValid(authorization)
     if (validatedToken.err) {
@@ -282,7 +280,7 @@ const deleteUser = async (req, res) => {
       message: `Valid token: ${objectFormatter(validatedToken.data)}`
     })
 
-    logger.http({ prefix, message: `deleting ${role} with id: ${id}` })
+    logger.http({ prefix, message: `deleting user with id: ${id}` })
 
     const { id } = req.params
 
@@ -291,24 +289,24 @@ const deleteUser = async (req, res) => {
     if (redisFindedUser) {
       logger.http({
         prefix,
-        message: `${role} found in redis: ${redisFindedUser}`
+        message: `User found in redis: ${redisFindedUser}`
       })
 
       await User.findByIdAndDelete(req.params.id)
 
       redisClient.del(`user?id=${id}`)
 
-      logger.http({ prefix, message: `${role} deleted successfully` })
+      logger.http({ prefix, message: `User deleted successfully` })
       logger.http({ prefix, message: 'Request finished...' })
 
-      res.json({ message: `${role} deleted successfully` })
+      res.json({ message: `User deleted successfully` })
     } else {
       await User.findByIdAndDelete(req.params.id)
 
-      logger.http({ prefix, message: `${role} deleted successfully` })
+      logger.http({ prefix, message: `User deleted successfully` })
       logger.http({ prefix, message: 'Request finished...' })
 
-      res.json({ message: `${role} deleted successfully` })
+      res.json({ message: `User deleted successfully` })
     }
   } catch (err) {
     logger.error({ prefix, message: err.message })

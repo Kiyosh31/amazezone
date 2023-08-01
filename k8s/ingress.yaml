@@ -17,27 +17,6 @@ spec:
                   name: users-srv
                   port:
                     number: 3000
-            - path: /api/seller/?(.*)
-              pathType: Prefix
-              backend:
-                service:
-                  name: users-srv
-                  port:
-                    number: 3000
-            - path: /api/address/?(.*)
-              pathType: Prefix
-              backend:
-                service:
-                  name: users-srv
-                  port:
-                    number: 3000
-            - path: /api/card/?(.*)
-              pathType: Prefix
-              backend:
-                service:
-                  name: users-srv
-                  port:
-                    number: 3000
             - path: /api/product/?(.*)
               pathType: Prefix
               backend:

@@ -7,7 +7,7 @@ import redis from 'redis'
 const app = express()
 app.use(express.json())
 
-app.use('/api', rootRouter)
+app.use('/api/user', rootRouter)
 
 export const redisClient = redis.createClient({
   url: process.env.REDIS_URI
