@@ -323,6 +323,12 @@ const signinUser = async (req, res) => {
     logger.http({ prefix, message: 'Request incoming...' })
 
     const { email, password } = req.body
+
+    logger.http({
+      prefix,
+      message: `Searching user with credentials: Email: ${email} Password: ${password}`
+    })
+
     const existingUser = await User.findOne({ email })
 
     if (!existingUser) {
@@ -339,6 +345,9 @@ const signinUser = async (req, res) => {
       logger.error({ prefix, message: 'Invalid credentials' })
       return res.status(400).send({ errors: 'Invalid credentials' })
     }
+
+    logger.http({ prefix, message: 'User credentials ok, creating token' })
+
     const token = createToken(
       existingUser.id,
       existingUser.email,
@@ -348,6 +357,8 @@ const signinUser = async (req, res) => {
       logger.error({ prefix, message: 'Token not created' })
       return res.status(400).send({ errors: 'Token not created' })
     }
+
+    logger.http({ prefix, message: 'Request finished...' })
 
     res.status(201).send({ token })
   } catch (err) {

@@ -9,13 +9,20 @@ import (
 func RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api")
 	{
-		products := api.Group("/products")
+		product := api.Group("/product")
 		{
-			products.GET("", handlers.GetAllProducts)
-			products.GET("/:id", handlers.GetProductById)
-			products.POST("/", handlers.CreateProduct)
-			products.PUT("/:id", handlers.UpdateProduct)
-			products.DELETE("/:id", handlers.DeleteProduct)
+			product.GET("", handlers.GetAllProducts)
+			product.GET("/:id", handlers.GetProductById)
+			product.POST("/", handlers.CreateProduct)
+			product.PUT("/:id", handlers.UpdateProduct)
+			product.DELETE("/:id", handlers.DeleteProduct)
+
+			comment := product.Group("/comment")
+			{
+				comment.POST("", handlers.CreateComment)
+				comment.GET("/:id", handlers.GetComment)
+				comment.GET("/all/:id", handlers.GetAllComments)
+			}
 		}
 	}
 }

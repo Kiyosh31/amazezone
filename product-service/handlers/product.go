@@ -20,7 +20,7 @@ func GetAllProducts(c *gin.Context) {
 
 	log.Info(prefix + "Searching for all products")
 	filter := bson.D{{}}
-	col := database.GetProductsCollection()
+	col := database.GetProductCollection()
 	cursor, err := col.Find(context.TODO(), filter)
 	if err != nil {
 		log.Warn(prefix+"Products not found: ", err)
@@ -60,7 +60,7 @@ func GetProductById(c *gin.Context) {
 	log.Info(prefix+"Searching for product with id: ", id)
 
 	var product models.Product
-	col := database.GetProductsCollection()
+	col := database.GetProductCollection()
 	err := col.FindOne(context.TODO(), filter).Decode(&product)
 	if err != nil {
 		log.Warn(prefix+"Product not found: ", err)
@@ -87,7 +87,7 @@ func CreateProduct(c *gin.Context) {
 
 	log.Info(prefix+"Creating new product with data: ", newProduct)
 
-	col := database.GetProductsCollection()
+	col := database.GetProductCollection()
 	res, err := col.InsertOne(context.TODO(), newProduct)
 	if err != nil {
 		log.Warn(prefix+"Error creating new product: %v", err)
@@ -114,7 +114,7 @@ func UpdateProduct(c *gin.Context) {
 
 	updateQuery := bson.D{{Key: "$set", Value: updatedProduct}}
 
-	col := database.GetProductsCollection()
+	col := database.GetProductCollection()
 	res, err := col.UpdateOne(context.TODO(), filter, updateQuery)
 	if err != nil {
 		log.Warn(prefix+"Error updating product: %v", err)
@@ -130,7 +130,7 @@ func DeleteProduct(c *gin.Context) {
 	log.Info(prefix + "Request incoming....")
 
 	id := utils.GetMongoId(c.Param("id"))
-	col := database.GetProductsCollection()
+	col := database.GetProductCollection()
 	filter := bson.D{{
 		Key:   "_id",
 		Value: id,

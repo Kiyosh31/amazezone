@@ -38,7 +38,7 @@ spec:
                   name: users-srv
                   port:
                     number: 3000
-            - path: /api/products/?(.*)
+            - path: /api/product/?(.*)
               pathType: Prefix
               backend:
                 service:

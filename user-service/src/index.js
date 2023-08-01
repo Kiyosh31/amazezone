@@ -18,11 +18,11 @@ const port = process.env.PORT || 3000
 redisClient.connect()
 
 redisClient.on('error', (err) =>
-  logger.error(`Redis client connection error: ${err}`)
+  logger.error(`[user-service] => Redis client connection error: ${err}`)
 )
 
 redisClient.on('connect', () =>
-  logger.info('Redis client connected successfully')
+  logger.info('[user-service] => Redis client connected successfully')
 )
 
-app.listen(port, () => logger.info(`user-service listening on port ${port}`))
+app.listen(port, () => logger.info(`[user-service] listening on port ${port}`))

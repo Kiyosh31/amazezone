@@ -36,11 +36,16 @@ spec:
                 secretKeyRef:
                   name: secrets
                   key: PRODUCT_SERVICE_DB_NAME
-            - name: DB_COLLECTION
+            - name: DB_PRODUCT_COLLECTION
               valueFrom:
                 secretKeyRef:
                   name: secrets
-                  key: PRODUCT_SERVICE_DB_COLLECTION
+                  key: PRODUCT_SERVICE_DB_PRODUCT_COLLECTION
+            - name: DB_COMMENT_COLLECTION
+              valueFrom:
+                secretKeyRef:
+                  name: secrets
+                  key: PRODUCT_SERVICE_DB_COMMENT_COLLECTION
             - name: DB_LOGGER_COLLECTION
               valueFrom:
                 secretKeyRef:
