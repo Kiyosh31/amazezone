@@ -61,3 +61,7 @@ make dev
 ```
 
 this will start all microservices in dev mode, with live realoding for any change made
+
+# Wiki!
+
+Please don't forget to visit the [Wiki Page](https://github.com/Kiyosh31/amazezone/wiki) to see diagrams, design docs and everything related to the design of this project! :)
