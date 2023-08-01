@@ -2,7 +2,7 @@ package rediscache
 
 import (
 	"context"
-	"products-service/utils"
+	"product_service/utils"
 
 	"github.com/redis/go-redis/v9"
 )

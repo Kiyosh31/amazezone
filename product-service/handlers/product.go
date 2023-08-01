@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"products-service/database"
-	"products-service/models"
-	"products-service/utils"
+	"product_service/database"
+	"product_service/models"
+	"product_service/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"

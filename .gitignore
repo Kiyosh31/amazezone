@@ -2,3 +2,4 @@ node_modules/
 tmp/
 logs/
 secrets.yaml
+build/

@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redis-user
+  name: redis-product
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: redis-user
+      app: redis-product
   template:
     metadata:
       labels:
-        app: redis-user
+        app: redis-product
     spec:
       containers:
-        - name: redis-user
+        - name: redis-product
           image: redis:alpine
           resources:
             limits:
@@ -23,11 +23,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: redis-user
+  name: redis-product
 spec:
   type: ClusterIP
   selector:
-    app: redis-user
+    app: redis-product
   ports:
     - name: http
       port: 6379

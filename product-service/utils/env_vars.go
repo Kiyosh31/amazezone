@@ -1,8 +1,6 @@
 package utils
 
-import (
-	"os"
-)
+import "os"
 
 func GetEnvVar(envVar string) string {
 	var log = Logger()

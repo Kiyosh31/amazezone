@@ -14,15 +14,15 @@ export const redisClient = redis.createClient({
 })
 
 const port = process.env.PORT || 3000
-app.listen(port, () => {
-  logger.info(`user-service listening on port ${port}`)
-  redisClient.connect()
-})
+
+redisClient.connect()
+
+redisClient.on('error', (err) =>
+  logger.error(`Redis client connection error: ${err}`)
+)
 
 redisClient.on('connect', () =>
   logger.info('Redis client connected successfully')
 )
 
-redisClient.on('error', (err) =>
-  logger.error(`Redis client connection error: ${err}`)
-)
+app.listen(port, () => logger.info(`user-service listening on port ${port}`))

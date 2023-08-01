@@ -1,10 +1,10 @@
 package main
 
 import (
-	"products-service/api"
-	"products-service/database"
-	rediscache "products-service/redis-cache"
-	"products-service/utils"
+	"product_service/api"
+	"product_service/database"
+	rediscache "product_service/redis_cache"
+	"product_service/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,12 +13,7 @@ var log = utils.Logger()
 
 func main() {
 	router := gin.New()
-	app_mode := utils.GetEnvVar("APP_ENV")
-	mode := gin.DebugMode
-	if app_mode != "development" {
-		mode = gin.ReleaseMode
-	}
-	gin.SetMode(mode)
+	gin.SetMode(gin.DebugMode)
 
 	api.RegisterRoutes(router)
 

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"products-service/handlers"
+	"product_service/handlers"
 
 	"github.com/gin-gonic/gin"
 )
