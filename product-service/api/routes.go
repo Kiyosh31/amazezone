@@ -13,16 +13,16 @@ func RegisterRoutes(router *gin.Engine) {
 	{
 		product := api.Group("/product")
 		{
-			product.GET("", GetAllProducts)
-			product.GET("/:id", GetProductById)
 			product.POST("/", CreateProduct)
+			product.GET("/:id", GetProductById)
+			product.GET("", GetAllProducts)
 			product.PUT("/:id", UpdateProduct)
 			product.DELETE("/:id", DeleteProduct)
 
 			comment := product.Group("/comment")
 			{
 				comment.POST("", CreateComment)
-				comment.GET("/:id", GetComment)
+				comment.GET("/:id", GetCommentById)
 				comment.GET("/all/:id", GetAllComments)
 			}
 		}

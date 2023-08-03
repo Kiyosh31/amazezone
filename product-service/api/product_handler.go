@@ -5,82 +5,19 @@ import (
 	"encoding/json"
 	"net/http"
 	"product_service/database"
+	"product_service/models"
 	rediscache "product_service/redis_cache"
-	"product_service/types"
 	"product_service/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func GetAllProducts(c *gin.Context) {
-	prefix := utils.CreatePrefix("GetAllProducts")
-	log.Info(prefix + "Request incoming...")
-
-	log.Info(prefix + "Searching for all products")
-	filter := bson.D{{}}
-	col := database.GetProductCollection()
-	cursor, err := col.Find(context.TODO(), filter)
-	if err != nil {
-		log.Warn(prefix+"Products not found: ", err)
-		c.JSON(http.StatusInternalServerError, utils.CreateErrorResponse("Products not found", err))
-		return
-	}
-
-	var results []types.Product
-	if err = cursor.All(context.TODO(), &results); err != nil {
-		log.Info(prefix+"Error in cursor: %v", err)
-		c.JSON(http.StatusInternalServerError, utils.CreateErrorResponse("Error in cursor", err))
-		return
-	}
-
-	for _, product := range results {
-		cursor.Decode(&product)
-		_, err := json.MarshalIndent(product, "", "    ")
-		if err != nil {
-			log.Warn(prefix+"Error iterating users: %v", err)
-			c.JSON(http.StatusInternalServerError, utils.CreateErrorResponse("Error iterating users", err))
-			return
-		}
-	}
-	log.Info(prefix+"products found with data: ", results)
-	log.Info(prefix + "Request finished....")
-
-	c.JSON(http.StatusOK, results)
-}
-
-func GetProductById(c *gin.Context) {
-	prefix := utils.CreatePrefix("GetProductById")
-	log.Info(prefix + "Request incoming....")
-
-	id := utils.GetMongoId(c.Param("id"))
-	filter := bson.D{{Key: "_id", Value: id}}
-
-	log.Info(prefix+"Searching for product with id: ", id)
-
-	// Check if exists in redis
-	// val, err := rediscache.RedisClient.Get(c.Request.Context(), "product?=" + ).Result()
-
-	var product types.Product
-	col := database.GetProductCollection()
-	err := col.FindOne(context.TODO(), filter).Decode(&product)
-	if err != nil {
-		log.Warn(prefix+"Product not found: ", err)
-		c.JSON(http.StatusInternalServerError, utils.CreateErrorResponse("Product not found", err))
-		return
-	}
-
-	log.Info(prefix+"Product found: ", product)
-	log.Info(prefix + "Request finished....")
-
-	c.JSON(http.StatusOK, product)
-}
-
 func CreateProduct(c *gin.Context) {
 	prefix := utils.CreatePrefix("CreateProduct")
 	log.Info(prefix + "Request incoming....")
 
-	var newProduct types.Product
+	var newProduct models.Product
 	err := c.BindJSON(&newProduct)
 	if err != nil {
 		log.Warn(prefix+"Invalid body: %v", err)
@@ -113,6 +50,69 @@ func CreateProduct(c *gin.Context) {
 	c.JSON(http.StatusCreated, res)
 }
 
+func GetProductById(c *gin.Context) {
+	prefix := utils.CreatePrefix("GetProductById")
+	log.Info(prefix + "Request incoming....")
+
+	id := utils.GetMongoId(c.Param("id"))
+	filter := bson.D{{Key: "_id", Value: id}}
+
+	log.Info(prefix+"Searching for product with id: ", id)
+
+	// Check if exists in redis
+	// val, err := rediscache.RedisClient.Get(c.Request.Context(), "product?=" + ).Result()
+
+	var product models.Product
+	col := database.GetProductCollection()
+	err := col.FindOne(context.TODO(), filter).Decode(&product)
+	if err != nil {
+		log.Warn(prefix+"Product not found: ", err)
+		c.JSON(http.StatusInternalServerError, utils.CreateErrorResponse("Product not found", err))
+		return
+	}
+
+	log.Info(prefix+"Product found: ", product)
+	log.Info(prefix + "Request finished....")
+
+	c.JSON(http.StatusOK, product)
+}
+
+func GetAllProducts(c *gin.Context) {
+	prefix := utils.CreatePrefix("GetAllProducts")
+	log.Info(prefix + "Request incoming...")
+
+	log.Info(prefix + "Searching for all products")
+	filter := bson.D{{}}
+	col := database.GetProductCollection()
+	cursor, err := col.Find(context.TODO(), filter)
+	if err != nil {
+		log.Warn(prefix+"Products not found: ", err)
+		c.JSON(http.StatusInternalServerError, utils.CreateErrorResponse("Products not found", err))
+		return
+	}
+
+	var results []models.Product
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		log.Info(prefix+"Error in cursor: %v", err)
+		c.JSON(http.StatusInternalServerError, utils.CreateErrorResponse("Error in cursor", err))
+		return
+	}
+
+	for _, product := range results {
+		cursor.Decode(&product)
+		_, err := json.MarshalIndent(product, "", "    ")
+		if err != nil {
+			log.Warn(prefix+"Error iterating users: %v", err)
+			c.JSON(http.StatusInternalServerError, utils.CreateErrorResponse("Error iterating users", err))
+			return
+		}
+	}
+	log.Info(prefix+"products found with data: ", results)
+	log.Info(prefix + "Request finished....")
+
+	c.JSON(http.StatusOK, results)
+}
+
 func UpdateProduct(c *gin.Context) {
 	prefix := utils.CreatePrefix("UpdateProduct")
 	log.Info(prefix + "Request incoming....")
@@ -120,7 +120,7 @@ func UpdateProduct(c *gin.Context) {
 	id := utils.GetMongoId(c.Param("id"))
 	filter := bson.D{{Key: "_id", Value: id}}
 
-	var updatedProduct types.Product
+	var updatedProduct models.Product
 	c.BindJSON(&updatedProduct)
 
 	log.Info(prefix+"Updating product with id: %v and data: %v", id, updatedProduct)
