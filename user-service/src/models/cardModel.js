@@ -10,7 +10,7 @@ const CardSchema = new mongoose.Schema({
     minLength: 5
   },
   number: {
-    type: String,
+    type: Number,
     required: true,
     minLength: 5
   },
@@ -28,6 +28,10 @@ const CardSchema = new mongoose.Schema({
     type: String,
     required: true,
     minLength: 4
+  },
+  default: {
+    type: Boolean,
+    required: true
   }
 })
 

@@ -2,6 +2,8 @@ import express from 'express'
 import {
   createAddress,
   deleteAddress,
+  getAddress,
+  getAllAddress,
   updateAddress
 } from '../controllers/addressController.js'
 import {
@@ -21,6 +23,10 @@ router.post(
   validateRequest,
   createAddress
 )
+
+router.get('/:id', tokenValidatorMiddleware, validateRequest, getAddress)
+
+router.get('/all/:id', tokenValidatorMiddleware, validateRequest, getAllAddress)
 
 router.put(
   '/:id',

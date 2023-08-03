@@ -1,16 +1,14 @@
 import Address from '../models/addressModel.js'
-import User from '../models/userModel.js'
 import { logger, objectFormatter } from '../utils/logger.js'
-import { isTokenValid } from '../utils/token.js'
-
-const getAddress = (address) => Address.findOne({ address: address })
-
-const getUser = (id) => User.findOne({ _id: id })
-
-const isAddressMine = (authorization, existingAddress) => {
-  const token = isTokenValid(authorization)
-  return existingAddress.userId === token.data.id
-}
+import {
+  deleteAddressById,
+  findAddressByAddress,
+  findAddressById,
+  findAllAddress,
+  findDefaultAddress,
+  isAddressMine
+} from '../common/address.js'
+import { findUserById } from '../common/user.js'
 
 const createAddress = async (req, res) => {
   const prefix = 'createAddress'
@@ -24,7 +22,7 @@ const createAddress = async (req, res) => {
       prefix,
       message: `Searching for existing address: ${address}`
     })
-    const existingAddress = await getAddress(address)
+    const existingAddress = await findAddressByAddress(address)
     if (existingAddress) {
       logger.error({ prefix, message: 'Address already exists' })
       return res.status(400).json({ errors: 'Address already exists' })
@@ -34,7 +32,7 @@ const createAddress = async (req, res) => {
       prefix,
       message: `Searching for existing user with id: ${userId}`
     })
-    const existingUser = await getUser(userId)
+    const existingUser = await findUserById(userId)
     if (!existingUser) {
       logger.error({ prefix, message: 'User to attach address not found' })
       return res
@@ -62,31 +60,70 @@ const createAddress = async (req, res) => {
   }
 }
 
+const getAddress = async (req, res) => {
+  const prefix = 'getAddress'
+  try {
+    logger.info({ prefix, message: 'Request incoming...' })
+
+    const { id } = req.params
+
+    logger.info({ prefix, message: `Searching for addres with userId: ${id}` })
+    const address = await findDefaultAddress(id)
+    if (address.length === 0) {
+      logger.error({ prefix, message: 'Address not found' })
+      return res.status(400).json({ errors: 'Address not found' })
+    }
+
+    logger.info({
+      prefix,
+      message: `Address found: ${objectFormatter(address)}`
+    })
+    logger.info({ prefix, message: 'Request finished...' })
+
+    res.json(address)
+  } catch (err) {
+    logger.error({ prefix, message: err.message })
+    return res.json({ errors: 'Something went wrong' })
+  }
+}
+
+const getAllAddress = async (req, res) => {
+  const prefix = 'getAllAddress'
+  try {
+    logger.info({ prefix, message: 'Request incoming...' })
+
+    const { id } = req.params
+
+    const allAddress = await findAllAddress(id)
+    if (allAddress.length === 0) {
+      logger.error({ prefix, message: 'Address not found' })
+      return res.status(400).json({ errors: 'Address not found' })
+    }
+
+    logger.info({ prefix, message: 'Request finished...' })
+    res.json(allAddress)
+  } catch (err) {
+    logger.error({ prefix, message: err.message })
+    return res.json({ errors: 'Something went wrong' })
+  }
+}
+
 const updateAddress = async (req, res) => {
   const prefix = 'updateAddress'
 
   try {
+    const { authorization } = req.headers
     const { id } = req.params
     const { userId } = req.body
 
     logger.http({ prefix, message: 'Request incoming...' })
-
-    const validatedToken = isTokenValid(req.headers.authorization)
-    if (validatedToken.err) {
-      logger.error({ prefix, message: validatedToken.data })
-      return res.status(400).send({ errors: validatedToken.data })
-    }
-    logger.http({
-      prefix,
-      message: `Valid token: ${objectFormatter(validatedToken.data)}`
-    })
 
     logger.http({
       prefix,
       message: `Searching address with id: ${id}`
     })
 
-    const existingAddress = await Address.findOne({ _id: id })
+    const existingAddress = await findAddressById(id)
     if (!existingAddress) {
       logger.error({ prefix, message: 'Address not found' })
       return res.status(400).json({ errors: 'Address not found' })
@@ -96,7 +133,7 @@ const updateAddress = async (req, res) => {
       prefix,
       message: `Searching user with id: ${userId}`
     })
-    const existingUser = await getUser(userId)
+    const existingUser = await findUserById(userId)
     if (!existingUser) {
       logger.error({ prefix, message: 'User to attach address not found' })
       return res
@@ -105,7 +142,7 @@ const updateAddress = async (req, res) => {
     }
 
     // check if the address belongs to te user
-    if (isAddressMine(req.headers.authorization, existingAddress)) {
+    if (isAddressMine(authorization, existingAddress)) {
       logger.error({
         prefix,
         message: "You don't have permission to update this address"
@@ -137,33 +174,24 @@ const deleteAddress = async (req, res) => {
   const prefix = 'deleteAddress'
 
   try {
+    const { authorization } = req.headers
     const { id } = req.params
 
     logger.http({ prefix, message: 'Request incoming...' })
-
-    const validatedToken = isTokenValid(req.headers.authorization)
-    if (validatedToken.err) {
-      logger.error({ prefix, message: validatedToken.data })
-      return res.status(400).send({ errors: validatedToken.data })
-    }
-    logger.http({
-      prefix,
-      message: `Valid token: ${objectFormatter(validatedToken.data)}`
-    })
 
     logger.http({
       prefix,
       message: `Searching address with id: ${id}`
     })
 
-    const existingAddress = await Address.findOne({ _id: id })
+    const existingAddress = await findAddressById(id)
     if (!existingAddress) {
       logger.error({ prefix, message: 'Address not found' })
       return res.status(400).json({ errors: 'Address not found' })
     }
 
     // check if the address belongs to te user
-    if (isAddressMine(req.headers.authorization, existingAddress)) {
+    if (isAddressMine(authorization, existingAddress)) {
       logger.error({
         prefix,
         message: "You don't have permission to delete this address"
@@ -178,7 +206,7 @@ const deleteAddress = async (req, res) => {
       message: `Deleting address`
     })
 
-    await Address.findByIdAndDelete(id)
+    await deleteAddressById(id)
 
     logger.http({ prefix, message: `Address deleted successfully` })
     logger.http({ prefix, message: 'Request finished...' })
@@ -190,4 +218,10 @@ const deleteAddress = async (req, res) => {
   }
 }
 
-export { createAddress, updateAddress, deleteAddress }
+export {
+  createAddress,
+  getAddress,
+  getAllAddress,
+  updateAddress,
+  deleteAddress
+}

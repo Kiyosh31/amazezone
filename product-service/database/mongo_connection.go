@@ -2,22 +2,23 @@ package database
 
 import (
 	"context"
-	"log"
 	"product_service/utils"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var (
+	uri         = utils.GetEnvVar("MONGO_URI")
+	product_db  = utils.GetEnvVar("DB_NAME")
+	product_col = utils.GetEnvVar("DB_PRODUCT_COLLECTION")
+	comment_col = utils.GetEnvVar("DB_COMMENT_COLLECTION")
+	logger_col  = utils.GetEnvVar("DB_LOGGER_COLLECTION")
+)
+
 var MongoClient *mongo.Client
 
 func ConnectToDB() error {
-	uri := utils.GetEnvVar("MONGO_URI")
-
-	if uri == "" {
-		log.Fatal("You must provide MONGO_URI in env")
-	}
-
 	var err error
 	MongoClient, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(uri))
 	if err != nil {
@@ -35,22 +36,13 @@ func DisconnectOfDB() {
 }
 
 func GetProductCollection() *mongo.Collection {
-	db := utils.GetEnvVar("DB_NAME")
-	col := utils.GetEnvVar("DB_PRODUCT_COLLECTION")
-
-	return MongoClient.Database(db).Collection(col)
+	return MongoClient.Database(product_db).Collection(product_col)
 }
 
 func GetCommentCollection() *mongo.Collection {
-	db := utils.GetEnvVar("DB_NAME")
-	col := utils.GetEnvVar("DB_COMMENT_COLLECTION")
-
-	return MongoClient.Database(db).Collection(col)
+	return MongoClient.Database(product_db).Collection(comment_col)
 }
 
 func GetLogsCollection() *mongo.Collection {
-	db := utils.GetEnvVar("DB_NAME")
-	col := utils.GetEnvVar("DB_LOGGER_COLLECTION")
-
-	return MongoClient.Database(db).Collection(col)
+	return MongoClient.Database(product_db).Collection(logger_col)
 }

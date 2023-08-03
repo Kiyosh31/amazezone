@@ -23,6 +23,10 @@ const AddressSchema = mongoose.Schema({
     type: String,
     required: true,
     minLength: 5
+  },
+  default: {
+    type: Boolean,
+    required: true
   }
 })
 

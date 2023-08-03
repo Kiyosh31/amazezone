@@ -45,7 +45,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: secrets
-                  key: USER_SERVICE_JWT_SECRET
+                  key: JWT_SECRET
             - name: REDIS_URI
               valueFrom:
                 secretKeyRef:

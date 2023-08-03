@@ -1,18 +1,15 @@
-import mongoose from 'mongoose'
 import Card from '../models/cardModel.js'
-import User from '../models/userModel.js'
 import { logger, objectFormatter } from '../utils/logger.js'
 import { isTokenValid } from '../utils/token.js'
-
-const getCard = (number) => Card.findOne({ number: number })
-
-const isCardMine = (authorization, existingCard) => {
-  const token = isTokenValid(authorization)
-  return existingCard.userId === token.data.id
-}
-
-const getUser = async (id) =>
-  User.findOne({ _id: new mongoose.Types.ObjectId(id) })
+import {
+  findDefaultCard,
+  isCardMine,
+  findCardByNumber,
+  findAllCardsById,
+  findCardById,
+  deleteCardById
+} from '../common/card.js'
+import { findUserById } from '../common/user.js'
 
 const createCard = async (req, res) => {
   const prefix = 'createCard'
@@ -26,7 +23,7 @@ const createCard = async (req, res) => {
       prefix,
       message: `Searching for existing card with number: ${number}`
     })
-    const existingCard = await getCard(number)
+    const existingCard = await findCardByNumber(number)
     if (existingCard) {
       logger.error({ prefix, message: 'Card already exists' })
       return res.json({ errors: 'Card already exists' })
@@ -36,7 +33,8 @@ const createCard = async (req, res) => {
       prefix,
       message: `Searching for existing user to attach the card with id: ${userId}`
     })
-    const existingUser = await getUser(userId)
+
+    const existingUser = await findUserById(userId)
     if (!existingUser) {
       logger.error({
         prefix,
@@ -64,6 +62,47 @@ const createCard = async (req, res) => {
   }
 }
 
+const getCard = async (req, res) => {
+  const prefix = 'getCard'
+
+  try {
+    logger.info({ prefix, message: 'Request incoming...' })
+    const { id } = req.params
+
+    const defaultCard = await findDefaultCard(id)
+    if (defaultCard.length === 0) {
+      logger.error({ prefix, message: 'Default card not found' })
+      return res.json({ errors: 'Default card not found' })
+    }
+
+    res.json(defaultCard)
+  } catch (err) {
+    logger.error({ prefix, message: err.message })
+    return res.json({ errors: 'Something went wrong' })
+  }
+}
+
+const getAllCards = async (req, res) => {
+  const prefix = 'getAllCards'
+  try {
+    logger.info({ prefix, message: 'Request incoming...' })
+
+    const { id } = req.params
+
+    const cards = await findAllCardsById(id)
+    if (!cards) {
+      logger.error({ prefix, message: 'No cards found for this ser' })
+      return res.json({ errors: 'No cards found for this ser' })
+    }
+
+    logger.info({ prefix, message: 'Request finished...' })
+    res.json(cards)
+  } catch (err) {
+    logger.error({ prefix, message: err.message })
+    return res.json({ errors: 'Something went wrong' })
+  }
+}
+
 const updateCard = async (req, res) => {
   const prefix = 'updateCard'
 
@@ -73,22 +112,12 @@ const updateCard = async (req, res) => {
 
     logger.http({ prefix, message: 'Request incoming...' })
 
-    const validatedToken = isTokenValid(req.headers.authorization)
-    if (validatedToken.err) {
-      logger.error({ prefix, message: validatedToken.data })
-      return res.status(400).send({ errors: validatedToken.data })
-    }
-    logger.http({
-      prefix,
-      message: `Valid token: ${objectFormatter(validatedToken.data)}`
-    })
-
     logger.http({
       prefix,
       message: `Searching card with id: ${objectFormatter(id)}`
     })
 
-    const existingCard = await Card.findOne({ _id: id })
+    const existingCard = await findCardById(id)
     if (!existingCard) {
       logger.error({ prefix, message: 'Card not found' })
       return res.status(400).json({ errors: 'Card not found' })
@@ -98,7 +127,7 @@ const updateCard = async (req, res) => {
       prefix,
       message: `Searching user with id: ${objectFormatter(userId)}`
     })
-    const existingUser = await getUser(userId)
+    const existingUser = await findUserById(userId)
     if (!existingUser) {
       logger.error({
         prefix,
@@ -161,7 +190,7 @@ const deleteCard = async (req, res) => {
       message: `Searching card with id: ${objectFormatter(id)}`
     })
 
-    const existingCard = await Card.findOne({ _id: id })
+    const existingCard = await findCardById(id)
     if (!existingCard) {
       logger.error({ prefix, message: 'Card not found' })
       return res.status(400).json({ errors: 'Card not found' })
@@ -183,7 +212,7 @@ const deleteCard = async (req, res) => {
       message: `Deleting card`
     })
 
-    await Card.findByIdAndDelete(id)
+    await deleteCardById(id)
 
     logger.http({ prefix, message: `Card deleted successfully` })
     logger.http({ prefix, message: 'Request finished...' })
@@ -195,4 +224,4 @@ const deleteCard = async (req, res) => {
   }
 }
 
-export { createCard, updateCard, deleteCard }
+export { createCard, getCard, getAllCards, updateCard, deleteCard }

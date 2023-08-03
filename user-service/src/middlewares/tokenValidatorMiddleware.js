@@ -1,4 +1,3 @@
-import { header } from 'express-validator'
 import { isTokenValid } from '../utils/token.js'
 import { logger, objectFormatter } from '../utils/logger.js'
 

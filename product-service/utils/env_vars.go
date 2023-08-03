@@ -7,7 +7,7 @@ func GetEnvVar(envVar string) string {
 
 	value := os.Getenv(envVar)
 	if value == "" {
-		log.Fatal("You must provide " + envVar + " in env variables")
+		log.Fatal("You must provide " + envVar + " in environment variables")
 	}
 
 	return value

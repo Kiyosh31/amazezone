@@ -8,6 +8,10 @@ const createUserMiddleware = [
   body('password').trim().notEmpty().withMessage('You must supply a password')
 ]
 
+const getUserMiddleware = [
+  param('id').exists().notEmpty().withMessage('You must provide a userId')
+]
+
 const updateUserMiddleware = [
   header('Authorization').notEmpty().withMessage('You must provide a token'),
   param('id').exists().notEmpty(),
@@ -30,6 +34,7 @@ const signinUserMiddleware = [
 
 export {
   createUserMiddleware,
+  getUserMiddleware,
   updateUserMiddleware,
   deleteUserMiddleware,
   signinUserMiddleware

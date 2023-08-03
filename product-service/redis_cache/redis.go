@@ -28,5 +28,5 @@ func CreateRedisClient() {
 		log.Fatalf(prefix+"Error connecting to redis: %v", err)
 	}
 
-	log.Info("[product-service] => Redis client connected successfully: ", pong)
+	log.Info("[product-service] Redis client connected successfully: ", pong)
 }
