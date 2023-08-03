@@ -9,6 +9,8 @@ import {
   isAddressMine
 } from '../common/address.js'
 import { findUserById } from '../common/user.js'
+import { redisClient } from '../index.js'
+import { transformRedisToJSON, transformJSONToRedis } from '../utils/redis.js'
 
 const createAddress = async (req, res) => {
   const prefix = 'createAddress'
@@ -68,19 +70,51 @@ const getAddress = async (req, res) => {
     const { id } = req.params
 
     logger.info({ prefix, message: `Searching for addres with userId: ${id}` })
-    const address = await findDefaultAddress(id)
-    if (address.length === 0) {
-      logger.error({ prefix, message: 'Address not found' })
-      return res.status(400).json({ errors: 'Address not found' })
+
+    // REDIS CHECK
+    const redisFindedAddress = await redisClient.get(`address?id=${id}`)
+    if (redisFindedAddress) {
+      logger.http({
+        prefix,
+        message: `Address found in redis: ${redisFindedAddress}`
+      })
+      const address = transformRedisToJSON(redisFindedAddress)
+
+      logger.http({ prefix, message: 'Request finished...' })
+
+      res.json(address)
+    } else {
+      // DATABASE CHECK
+      const mongoFindedAddress = await findDefaultAddress(id)
+      if (mongoFindedAddress.length === 0) {
+        logger.error({ prefix, message: 'Address not found' })
+        return res.status(400).json({ errors: 'Address not found' })
+      }
+
+      logger.info({
+        prefix,
+        message: `Address found in database: ${objectFormatter(
+          mongoFindedAddress
+        )}`
+      })
+
+      logger.info({
+        prefix,
+        message: 'Adding address to redis'
+      })
+      await redisClient.set(
+        `address?id=${id}`,
+        transformJSONToRedis(mongoFindedAddress)
+      )
+      logger.info({
+        prefix,
+        message: 'Address added redis'
+      })
+
+      logger.info({ prefix, message: 'Request finished...' })
+
+      res.json(mongoFindedAddress)
     }
-
-    logger.info({
-      prefix,
-      message: `Address found: ${objectFormatter(address)}`
-    })
-    logger.info({ prefix, message: 'Request finished...' })
-
-    res.json(address)
   } catch (err) {
     logger.error({ prefix, message: err.message })
     return res.json({ errors: 'Something went wrong' })
@@ -123,8 +157,8 @@ const updateAddress = async (req, res) => {
       message: `Searching address with id: ${id}`
     })
 
-    const existingAddress = await findAddressById(id)
-    if (!existingAddress) {
+    const mongoFindedAddress = await findAddressById(id)
+    if (!mongoFindedAddress) {
       logger.error({ prefix, message: 'Address not found' })
       return res.status(400).json({ errors: 'Address not found' })
     }
@@ -142,7 +176,7 @@ const updateAddress = async (req, res) => {
     }
 
     // check if the address belongs to te user
-    if (isAddressMine(authorization, existingAddress)) {
+    if (isAddressMine(authorization, mongoFindedAddress)) {
       logger.error({
         prefix,
         message: "You don't have permission to update this address"
@@ -157,13 +191,28 @@ const updateAddress = async (req, res) => {
       message: `Updating address with data: ${objectFormatter(req.body)}`
     })
 
-    existingAddress.set({ ...req.body })
-    await existingAddress.save()
+    mongoFindedAddress.set({ ...req.body })
+    await mongoFindedAddress.save()
 
-    logger.http({ prefix, message: `address updated successfully` })
+    logger.http({ prefix, message: 'Address updated successfully in database' })
+
+    // REDIS UPDATE
+    const redisAddress = await redisClient.get(`address?id=${id}`)
+    logger.http({
+      prefix,
+      message: `Updating address in redis: ${redisAddress}`
+    })
+
+    await redisClient.del(`address?id=${mongoFindedAddress.userId}`)
+    await redisClient.set(
+      `address?id=${mongoFindedAddress.userId}`,
+      transformJSONToRedis(mongoFindedAddress)
+    )
+
+    logger.http({ prefix, message: 'Address updated successfully in redis' })
     logger.http({ prefix, message: 'Request finished...' })
 
-    res.json(existingAddress)
+    res.json(mongoFindedAddress)
   } catch (err) {
     logger.error({ prefix, message: err.message })
     return res.json({ errors: 'Something went wrong' })
@@ -184,14 +233,14 @@ const deleteAddress = async (req, res) => {
       message: `Searching address with id: ${id}`
     })
 
-    const existingAddress = await findAddressById(id)
-    if (!existingAddress) {
+    const mongoFindedAddress = await findAddressById(id)
+    if (!mongoFindedAddress) {
       logger.error({ prefix, message: 'Address not found' })
       return res.status(400).json({ errors: 'Address not found' })
     }
 
     // check if the address belongs to te user
-    if (isAddressMine(authorization, existingAddress)) {
+    if (isAddressMine(authorization, mongoFindedAddress)) {
       logger.error({
         prefix,
         message: "You don't have permission to delete this address"
@@ -207,6 +256,20 @@ const deleteAddress = async (req, res) => {
     })
 
     await deleteAddressById(id)
+
+    // REDIS DELETION
+    const redisAddress = await redisClient.get(
+      `address?id=${mongoFindedAddress.userId}`
+    )
+    if (!redisAddress) {
+      logger.error({
+        prefix,
+        message: 'Address not found in redis'
+      })
+      return res.json({ message: 'Address deleted successfully' })
+    }
+
+    await redisClient.del(`address?id=${mongoFindedAddress.userId}`)
 
     logger.http({ prefix, message: `Address deleted successfully` })
     logger.http({ prefix, message: 'Request finished...' })
