@@ -12,6 +12,45 @@ import {
   isUserMine
 } from '../common/user.js'
 
+const createUser = async (req, res) => {
+  const prefix = 'createUser'
+
+  try {
+    logger.http({ prefix, message: 'Request incoming...' })
+
+    const { email } = req.body
+
+    const user = await findUserByEmail(email)
+    if (user) {
+      logger.error({ prefix, message: 'User already exists' })
+      return res.status(400).send({ errors: 'User already exists' })
+    }
+
+    const newUser = new User({ ...req.body })
+    logger.http({
+      prefix,
+      message: `Creating user with body: ${objectFormatter(req.body)}`
+    })
+    await newUser.save()
+
+    logger.http({ prefix, message: `User created successfully: ${newUser}` })
+
+    // ADDING USER TO REDIS
+    logger.http({ prefix, message: 'Adding user to redis' })
+    const redisUser = transformJSONToRedis(newUser)
+
+    await redisClient.set(`user?id=${newUser._id}`, redisUser)
+
+    logger.http({ prefix, message: 'User added successfully to redis' })
+    logger.http({ prefix, message: 'Request finished...' })
+
+    res.json(newUser)
+  } catch (err) {
+    logger.error({ prefix, message: err.message })
+    return res.json({ errors: 'Something went wrong' })
+  }
+}
+
 const signinUser = async (req, res) => {
   const prefix = 'signinUser'
 
@@ -74,70 +113,49 @@ const getUser = async (req, res) => {
 
     logger.http({ prefix, message: `Searching user with id: ${id}` })
 
-    // const redisFindedUser = await redisClient.get(`user?id=${id}`)
+    // REDIS CHECK
+    const redisFindedUser = await redisClient.get(`user?id=${id}`)
+    if (redisFindedUser) {
+      logger.http({
+        prefix,
+        message: `User found in redis: ${redisFindedUser}`
+      })
+      const user = transformRedisToJSON(redisFindedUser)
 
-    // if (redisFindedUser) {
-    //   logger.http({
-    //     prefix,
-    //     message: `User found in redis: ${redisFindedUser}`
-    //   })
-    //   const user = transformRedisToJSON(redisFindedUser)
+      if (!isUserMine(authorization, user)) {
+        logger.error({ prefix, message: 'User not belong to this jwt' })
+        return res.json({ errors: 'User not belong to this jwt' })
+      }
 
-    //   if (!isUserMine(authorization, user[0])) {
-    //     logger.error({ prefix, message: 'User not belong to this jwt' })
-    //     return res.json({ errors: 'User not belong to this jwt' })
-    //   }
+      logger.http({ prefix, message: 'Request finished...' })
 
-    //   logger.http({ prefix, message: 'Request finished...' })
+      res.json(user)
+    } else {
+      // DATABASE CHECK
+      const mongoFindedUser = await findUserById(id)
+      if (!mongoFindedUser) {
+        logger.error({ prefix, message: 'User not found' })
+        return res.status(400).json({ errors: 'User not found' })
+      }
 
-    //   res.json(user)
-    // } else {
-    // const mongoFindedUser = await User.aggregate([
-    //   {
-    //     $match: { _id: new mongoose.Types.ObjectId(id) }
-    //   },
-    //   {
-    //     $lookup: {
-    //       from: 'cards',
-    //       localField: '_id',
-    //       foreignField: 'userId',
-    //       as: 'cards'
-    //     }
-    //   },
-    //   {
-    //     $lookup: {
-    //       from: 'addresses',
-    //       localField: '_id',
-    //       foreignField: 'userId',
-    //       as: 'addresses'
-    //     }
-    //   }
-    // ])
-    const mongoFindedUser = await findUserById(id)
+      logger.http({
+        prefix,
+        message: `User found in database: ${objectFormatter(mongoFindedUser)}`
+      })
 
-    if (!mongoFindedUser) {
-      logger.error({ prefix, message: 'User not found' })
-      return res.status(400).json({ errors: 'User not found' })
+      if (!isUserMine(authorization, mongoFindedUser)) {
+        logger.error({ prefix, message: 'User not belong to this jwt' })
+        return res.json({ errors: 'User not belong to this jwt' })
+      }
+
+      await redisClient.set(
+        `user?id=${id}`,
+        transformJSONToRedis(mongoFindedUser)
+      )
+
+      logger.http({ prefix, message: 'Request finished...' })
+      res.json(mongoFindedUser)
     }
-
-    logger.http({
-      prefix,
-      message: `User found in database: ${objectFormatter(mongoFindedUser)}`
-    })
-
-    if (!isUserMine(authorization, mongoFindedUser)) {
-      logger.error({ prefix, message: 'User not belong to this jwt' })
-      return res.json({ errors: 'User not belong to this jwt' })
-    }
-
-    // await redisClient.set(
-    //   `user?id=${id}`,
-    //   transformJSONToRedis(mongoFindedUser)
-    // )
-
-    logger.http({ prefix, message: 'Request finished...' })
-    res.json(mongoFindedUser)
-    // }
   } catch (err) {
     logger.error({ prefix, message: err.message })
     return res.json({ errors: 'Something went wrong' })
@@ -151,25 +169,12 @@ const getAllUsers = async (req, res) => {
     logger.http({ prefix, message: 'Request incoming...' })
     logger.http({ prefix, message: 'Searching for all users' })
 
-    // const usersInRedis = await redisClient.get('allUsers')
-
-    // if (usersInRedis) {
-    //   logger.http({
-    //     prefix,
-    //     message: `User found in redis: ${usersInRedis}`
-    //   })
-    //   logger.http({ prefix, message: 'Request finished...' })
-
-    //   res.json(transformRedisToJSON(usersInRedis))
-    // } else {
     const usersInMongo = await findAllUsers()
 
     if (!usersInMongo || usersInMongo.length === 0) {
       logger.error({ prefix, message: 'No users found' })
       return res.status(400).send({ errors: 'No users found' })
     }
-
-    // await redisClient.set(`allUsers`, transformJSONToRedis(usersInMongo))
 
     logger.http({
       prefix,
@@ -178,44 +183,6 @@ const getAllUsers = async (req, res) => {
     logger.http({ prefix, message: 'Request finished...' })
 
     res.json(usersInMongo)
-    // }
-  } catch (err) {
-    logger.error({ prefix, message: err.message })
-    return res.json({ errors: 'Something went wrong' })
-  }
-}
-
-const createUser = async (req, res) => {
-  const prefix = 'createUser'
-
-  try {
-    logger.http({ prefix, message: 'Request incoming...' })
-
-    const { email } = req.body
-
-    const user = await findUserByEmail(email)
-    if (user) {
-      logger.error({ prefix, message: 'User already exists' })
-      return res.status(400).send({ errors: 'User already exists' })
-    }
-
-    const newUser = new User({ ...req.body })
-    logger.http({
-      prefix,
-      message: `Creating user with body: ${objectFormatter(req.body)}`
-    })
-    await newUser.save()
-
-    // logger.http({ prefix, message: 'Deleting list of users from redis' })
-    // const usersInRedis = await redisClient.get('allUsers')
-    // if (usersInRedis) {
-    //   await redisClient.del('allUsers')
-    // }
-
-    logger.http({ prefix, message: `user created successfully: ${newUser}` })
-    logger.http({ prefix, message: 'Request finished...' })
-
-    res.json(newUser)
   } catch (err) {
     logger.error({ prefix, message: err.message })
     return res.json({ errors: 'Something went wrong' })
@@ -232,29 +199,6 @@ const updateUser = async (req, res) => {
 
     logger.http({ prefix, message: `Searching for user with id: ${id}` })
 
-    // const redisFindedUser = await redisClient.get(`user?id=${id}`)
-    // if (redisFindedUser) {
-    //   logger.http({
-    //     prefix,
-    //     message: `User found in redis: ${redisFindedUser}`
-    //   })
-
-    //   if (!isUserMine(authorization, redisFindedUser)) {
-    //     logger.error({ prefix, message: 'User not belong to this jwt' })
-    //     return res.json({ errors: 'User not belong to this jwt' })
-    //   }
-
-    //   const user = transformRedisToJSON(redisFindedUser)
-    //   user.set({ ...req.body })
-    //   await user.save()
-
-    //   await redisClient.set(`user?id=${id}`, transformJSONToRedis(user))
-
-    //   logger.http({ prefix, message: `user updated successfully` })
-    //   logger.http({ prefix, message: 'Request finished...' })
-
-    //   res.json(user)
-    // } else {
     const mongoFindedUser = await findUserById(id)
     if (!mongoFindedUser) {
       logger.error({ prefix, message: 'User not found' })
@@ -275,16 +219,23 @@ const updateUser = async (req, res) => {
     mongoFindedUser.set({ ...req.body })
     await mongoFindedUser.save()
 
-    // await redisClient.set(
-    //   `user?id=${id}`,
-    //   transformJSONToRedis(mongoFindedUser)
-    // )
+    logger.http({ prefix, message: 'User updated successfully in database' })
+    logger.http({ prefix, message: 'Searching user in redis' })
 
-    logger.http({ prefix, message: `user updated successfully` })
+    // REDIS UPDATE
+    const redisUser = await redisClient.get(`user?id=${id}`)
+    logger.http({
+      prefix,
+      message: `User ${
+        redisUser ? 'found ' : 'not found '
+      } in redis, updating it`
+    })
+    await redisClient.set(`user?id=${mongoFindedUser._id}`, redisUser)
+
+    logger.http({ prefix, message: 'User updated successfully in redis' })
     logger.http({ prefix, message: 'Request finished...' })
 
     res.json(mongoFindedUser)
-    // }
   } catch (err) {
     logger.error({ prefix, message: err.message })
     return res.json({ errors: 'Something went wrong' })
@@ -300,38 +251,48 @@ const deleteUser = async (req, res) => {
 
     logger.http({ prefix, message: 'Request incoming...' })
 
-    const user = await findUserById(id)
-    if (!isUserMine(authorization, user)) {
+    const mongoFindedUser = await findUserById(id)
+    if (!mongoFindedUser) {
+      logger.error({ prefix, message: 'User not found' })
+      return res.json({ errors: 'User not found' })
+    }
+
+    if (!isUserMine(authorization, mongoFindedUser)) {
       logger.error({ prefix, message: 'User not belong to this jwt' })
       return res.json({ errors: 'User not belong to this jwt' })
     }
 
-    logger.http({ prefix, message: `deleting user with id: ${id}` })
+    logger.http({ prefix, message: `Deleting user with id: ${id}` })
 
-    // const redisFindedUser = await redisClient.get(`user?id=${id}`)
-
-    // if (redisFindedUser) {
-    //   logger.http({
-    //     prefix,
-    //     message: `User found in redis: ${redisFindedUser}`
-    //   })
-
-    //   await User.findByIdAndDelete(req.params.id)
-
-    //   redisClient.del(`user?id=${id}`)
-
-    //   logger.http({ prefix, message: `User deleted successfully` })
-    //   logger.http({ prefix, message: 'Request finished...' })
-
-    //   res.json({ message: `User deleted successfully` })
-    // } else {
     await deleteSingleUser(id)
 
-    logger.http({ prefix, message: 'User deleted successfully' })
+    logger.http({ prefix, message: 'User deleted successfully from database' })
+    logger.http({ prefix, message: 'Searching user in redis' })
+
+    // REDIS DELETION
+    const redisUser = await redisClient.get(`user?id=${id}`)
+    if (!redisUser) {
+      logger.error({
+        prefix,
+        message: 'User not found in redis'
+      })
+
+      return res.json({ message: 'User deleted successfully' })
+    }
+
+    logger.http({
+      prefix,
+      message: 'User found in redis, deleting it'
+    })
+    await redisClient.del(`user?id=${id}`)
+
+    logger.http({
+      prefix,
+      message: 'User deleted successfully from redis'
+    })
     logger.http({ prefix, message: 'Request finished...' })
 
     res.json({ message: 'User deleted successfully' })
-    // }
   } catch (err) {
     logger.error({ prefix, message: err.message })
     return res.json({ errors: 'Something went wrong' })
