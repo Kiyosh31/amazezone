@@ -1,5 +1,8 @@
 import mongoose, { Types } from 'mongoose'
 
+const cardType = ['Mastercard', 'Visa', 'American Express']
+const cardDefault = [true, false]
+
 const CardSchema = new mongoose.Schema({
   userId: {
     type: Types.ObjectId
@@ -26,11 +29,13 @@ const CardSchema = new mongoose.Schema({
   },
   type: {
     type: String,
+    Enumerator: cardType,
     required: true,
     minLength: 4
   },
   default: {
     type: Boolean,
+    Enumerator: cardDefault,
     required: true
   }
 })

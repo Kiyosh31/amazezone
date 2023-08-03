@@ -1,5 +1,7 @@
 import mongoose, { Types } from 'mongoose'
 
+const addressDefault = [true, false]
+
 const AddressSchema = mongoose.Schema({
   userId: {
     type: Types.ObjectId
@@ -26,6 +28,7 @@ const AddressSchema = mongoose.Schema({
   },
   default: {
     type: Boolean,
+    Enumerator: addressDefault,
     required: true
   }
 })

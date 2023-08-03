@@ -1,6 +1,8 @@
 import mongoose from 'mongoose'
 import Password from '../utils/password.js'
 
+const userType = ['user', 'seller']
+
 const UserSchema = new mongoose.Schema(
   {
     name: {
@@ -30,6 +32,7 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
+      Enumerator: userType,
       required: true
     }
   },
