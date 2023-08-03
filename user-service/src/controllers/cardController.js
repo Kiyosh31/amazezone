@@ -10,6 +10,8 @@ import {
   deleteCardById
 } from '../common/card.js'
 import { findUserById } from '../common/user.js'
+import { redisClient } from '../index.js'
+import { transformJSONToRedis, transformRedisToJSON } from '../utils/redis.js'
 
 const createCard = async (req, res) => {
   const prefix = 'createCard'
@@ -69,13 +71,48 @@ const getCard = async (req, res) => {
     logger.info({ prefix, message: 'Request incoming...' })
     const { id } = req.params
 
-    const defaultCard = await findDefaultCard(id)
-    if (defaultCard.length === 0) {
-      logger.error({ prefix, message: 'Default card not found' })
-      return res.json({ errors: 'Default card not found' })
-    }
+    logger.http({ prefix, message: `Searching card with id: ${id}` })
 
-    res.json(defaultCard)
+    // REDIS CHECK
+    const redisFindedCard = await redisClient.get(`card?id=${id}`)
+    if (redisFindedCard) {
+      logger.http({
+        prefix,
+        message: `Card found in redis with info: ${objectFormatter(
+          redisFindedCard
+        )}`
+      })
+      const card = transformRedisToJSON(redisFindedCard)
+
+      logger.http({ prefix, message: 'Request finished...' })
+      return res.json(card)
+    } else {
+      // DATABASE
+      const mongoDefaultCard = await findDefaultCard(id)
+      if (mongoDefaultCard.length === 0) {
+        logger.error({ prefix, message: 'Default card not found' })
+        return res.json({ errors: 'Default card not found' })
+      }
+      logger.http({
+        prefix,
+        message: `Card found in database with info: ${objectFormatter(
+          mongoDefaultCard
+        )}`
+      })
+
+      logger.http({
+        prefix,
+        message: 'Adding card to redis'
+      })
+
+      await redisClient.set(
+        `card?id=${id}`,
+        transformJSONToRedis(mongoDefaultCard)
+      )
+
+      logger.http({ prefix, message: 'Request finished...' })
+      res.json(mongoDefaultCard)
+    }
   } catch (err) {
     logger.error({ prefix, message: err.message })
     return res.json({ errors: 'Something went wrong' })
@@ -107,6 +144,7 @@ const updateCard = async (req, res) => {
   const prefix = 'updateCard'
 
   try {
+    const { authorization } = req.headers
     const { id } = req.params
     const { userId } = req.body
 
@@ -139,7 +177,7 @@ const updateCard = async (req, res) => {
     }
 
     // check if the card belongs to te user
-    if (isCardMine(req.headers.authorization, existingCard)) {
+    if (isCardMine(authorization, existingCard)) {
       logger.error({
         prefix,
         message: "You don't have permission to update this card"
@@ -151,13 +189,25 @@ const updateCard = async (req, res) => {
 
     logger.http({
       prefix,
-      message: `Updating card with data: ${objectFormatter(req.body)}`
+      message: `Updating card in database with data: ${objectFormatter(
+        req.body
+      )}`
     })
 
     existingCard.set({ ...req.body })
     await existingCard.save()
 
-    logger.http({ prefix, message: `card updated successfully` })
+    // REDIS UPDATE
+    const redisCard = await redisClient.get(`card?id=${userId}`)
+    logger.http({ prefix, message: `Updating card in redis: ${redisCard}` })
+
+    await redisClient.del(`card?id=${userId}`)
+    await redisClient.set(
+      `card?id=${userId}`,
+      transformJSONToRedis(existingCard)
+    )
+
+    logger.http({ prefix, message: 'card updated successfully' })
     logger.http({ prefix, message: 'Request finished...' })
 
     res.json(existingCard)
@@ -171,6 +221,7 @@ const deleteCard = async (req, res) => {
   const prefix = 'deleteCard'
 
   try {
+    const { authorization } = req.headers
     const { id } = req.params
 
     logger.http({ prefix, message: 'Request incoming...' })
@@ -197,7 +248,7 @@ const deleteCard = async (req, res) => {
     }
 
     // check if the card belongs to te user
-    if (isCardMine(req.headers.authorization, existingCard)) {
+    if (isCardMine(authorization, existingCard)) {
       logger.error({
         prefix,
         message: "You don't have permission to delete this card"
@@ -214,7 +265,15 @@ const deleteCard = async (req, res) => {
 
     await deleteCardById(id)
 
-    logger.http({ prefix, message: `Card deleted successfully` })
+    // REDIS DELETION
+    const redisCard = await redisClient.get(`card?id=${existingCard._id}`)
+    if (!redisCard) {
+      logger.error({ prefix, message: 'Card not found in redis' })
+      return res.json({ message: 'Card not found in redis' })
+    }
+    await redisClient.del(`card?id=${existingCard.userId}`)
+
+    logger.http({ prefix, message: 'Card deleted successfully from redis' })
     logger.http({ prefix, message: 'Request finished...' })
 
     res.json({ message: 'Card deleted successfully' })

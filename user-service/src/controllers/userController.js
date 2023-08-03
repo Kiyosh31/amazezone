@@ -226,11 +226,14 @@ const updateUser = async (req, res) => {
     const redisUser = await redisClient.get(`user?id=${id}`)
     logger.http({
       prefix,
-      message: `User ${
-        redisUser ? 'found ' : 'not found '
-      } in redis, updating it`
+      message: `Updating user in redis: ${redisUser}`
     })
-    await redisClient.set(`user?id=${mongoFindedUser._id}`, redisUser)
+
+    await redisClient.del(`user?id=${id}`)
+    await redisClient.set(
+      `user?id=${id}`,
+      transformJSONToRedis(mongoFindedUser)
+    )
 
     logger.http({ prefix, message: 'User updated successfully in redis' })
     logger.http({ prefix, message: 'Request finished...' })
