@@ -1,11 +1,11 @@
-package handlers
+package api
 
 import (
 	"context"
 	"encoding/json"
 	"net/http"
 	"product_service/database"
-	"product_service/models"
+	"product_service/types"
 	"product_service/utils"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +16,7 @@ func CreateComment(c *gin.Context) {
 	prefix := utils.CreatePrefix("CreateComment")
 	log.Info(prefix + "Request incoming...")
 
-	var newComment models.ProductComment
+	var newComment types.ProductComment
 	err := c.BindJSON(&newComment)
 	if err != nil {
 		log.Warn(prefix+"Invalid body: %v", err)
@@ -49,7 +49,7 @@ func GetComment(c *gin.Context) {
 
 	log.Info(prefix+"Searching comment with id: ", id)
 
-	var comment models.ProductComment
+	var comment types.ProductComment
 	col := database.GetCommentCollection()
 	err := col.FindOne(context.TODO(), filter).Decode(&comment)
 	if err != nil {
@@ -80,7 +80,7 @@ func GetAllComments(c *gin.Context) {
 		return
 	}
 
-	var comments []models.ProductComment
+	var comments []types.ProductComment
 	if err = cursor.All(context.TODO(), &comments); err != nil {
 		log.Warn(prefix+"Error in cursor: %v", err)
 		c.JSON(http.StatusInternalServerError, utils.CreateErrorResponse("Error in cursor", err))

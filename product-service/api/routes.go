@@ -1,27 +1,29 @@
 package api
 
 import (
-	"product_service/handlers"
+	"product_service/utils"
 
 	"github.com/gin-gonic/gin"
 )
+
+var log = utils.Logger()
 
 func RegisterRoutes(router *gin.Engine) {
 	api := router.Group("/api")
 	{
 		product := api.Group("/product")
 		{
-			product.GET("", handlers.GetAllProducts)
-			product.GET("/:id", handlers.GetProductById)
-			product.POST("/", handlers.CreateProduct)
-			product.PUT("/:id", handlers.UpdateProduct)
-			product.DELETE("/:id", handlers.DeleteProduct)
+			product.GET("", GetAllProducts)
+			product.GET("/:id", GetProductById)
+			product.POST("/", CreateProduct)
+			product.PUT("/:id", UpdateProduct)
+			product.DELETE("/:id", DeleteProduct)
 
 			comment := product.Group("/comment")
 			{
-				comment.POST("", handlers.CreateComment)
-				comment.GET("/:id", handlers.GetComment)
-				comment.GET("/all/:id", handlers.GetAllComments)
+				comment.POST("", CreateComment)
+				comment.GET("/:id", GetComment)
+				comment.GET("/all/:id", GetAllComments)
 			}
 		}
 	}

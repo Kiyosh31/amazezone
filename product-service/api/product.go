@@ -1,19 +1,17 @@
-package handlers
+package api
 
 import (
 	"context"
 	"encoding/json"
 	"net/http"
 	"product_service/database"
-	"product_service/models"
 	rediscache "product_service/redis_cache"
+	"product_service/types"
 	"product_service/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 )
-
-var log = utils.Logger()
 
 func GetAllProducts(c *gin.Context) {
 	prefix := utils.CreatePrefix("GetAllProducts")
@@ -29,7 +27,7 @@ func GetAllProducts(c *gin.Context) {
 		return
 	}
 
-	var results []models.Product
+	var results []types.Product
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		log.Info(prefix+"Error in cursor: %v", err)
 		c.JSON(http.StatusInternalServerError, utils.CreateErrorResponse("Error in cursor", err))
@@ -63,7 +61,7 @@ func GetProductById(c *gin.Context) {
 	// Check if exists in redis
 	// val, err := rediscache.RedisClient.Get(c.Request.Context(), "product?=" + ).Result()
 
-	var product models.Product
+	var product types.Product
 	col := database.GetProductCollection()
 	err := col.FindOne(context.TODO(), filter).Decode(&product)
 	if err != nil {
@@ -82,7 +80,7 @@ func CreateProduct(c *gin.Context) {
 	prefix := utils.CreatePrefix("CreateProduct")
 	log.Info(prefix + "Request incoming....")
 
-	var newProduct models.Product
+	var newProduct types.Product
 	err := c.BindJSON(&newProduct)
 	if err != nil {
 		log.Warn(prefix+"Invalid body: %v", err)
@@ -122,7 +120,7 @@ func UpdateProduct(c *gin.Context) {
 	id := utils.GetMongoId(c.Param("id"))
 	filter := bson.D{{Key: "_id", Value: id}}
 
-	var updatedProduct models.Product
+	var updatedProduct types.Product
 	c.BindJSON(&updatedProduct)
 
 	log.Info(prefix+"Updating product with id: %v and data: %v", id, updatedProduct)
